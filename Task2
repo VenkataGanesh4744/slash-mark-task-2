@@ -1,0 +1,345 @@
+NAME: Weather Reporting System - Analysis(Hardware Actuation)
+
+MATLAB Code:
+
+% Read temperature data from a ThingSpeak channel over the past 24 hours 
+% to calculate the high and low temperatures and write to another channel. 
+   
+% Channel 12397 contains data from the MathWorks Weather Station, located 
+% in Natick, Massachusetts. The data is collected once every minute. Field 
+% 4 contains temperature data. 
+   
+% Channel ID to read data from 
+readChannelID = 1369889; 
+% Temperature Field ID 
+TemperatureFieldID = 1; 
+PressureFieldID = 2;
+HumidityFieldID = 3;  
+% Channel Read API Key   
+% If your channel is private, then enter the read API Key between the '' below: 
+readAPIKey = 'TI15UDZ38496FELU'; 
+   
+% Read temperature data for the last 24 hours from the MathWorks weather 
+% station channel. Learn more about the thingSpeakRead function by going to 
+% the Documentation tab on the right side pane of this page. 
+   
+[tempF,timeStamp] = thingSpeakRead(readChannelID,'Fields',TemperatureFieldID, ...
+                                                'numDays',1,'ReadKey',readAPIKey); 
+[pressF,timeStamp] = thingSpeakRead(readChannelID,'Fields',PressureFieldID, ...
+                                                'numDays',1,'ReadKey',readAPIKey); 
+
+avgTemperature = nanmean(tempF);
+avgPressure = nanmean(pressF);
+    
+display(avgTemperature,'Average Temperature for the past 24 hours is');  
+display(avgPressure,'Average Pressure for the past 24 hours is');  
+ 
+
+
+writeChannelID = 1369893; 
+% Enter the Write API Key between the '' below: 
+writeAPIKey = 'YMAK01DU9P9V9AOD';   
+% Learn more about the thingSpeakWrite function by going to the Documentation tab on 
+% the right side pane of this page. 
+
+thingSpeakWrite(writeChannelID,'Fields',[1,2],'Values',{avgTemperature,avgPressure},'WriteKey',writeAPIKey);
+alertApiKey = 'TAKP7C5XU9ZEVJ8GFZRXC';
+alertUrl = "https://api.thingspeak.com/alerts/send";
+options = weboptions("HeaderFields", ["ThingSpeak-Alerts-API-Key", alertApiKey ]);
+alertSubject = sprintf("Temperature Notification");
+if(avgTemperature>28)
+    disp('It is very hot now')
+    alertBody='HEAT: It is very hot now';
+elseif(avgPressure<970)
+    disp('It is a windy day')
+    alertBody='WIND: It is windy now';
+else
+    disp('No update in todays weather')
+end
+%try  
+webwrite(alertUrl , "body", alertBody, "subject", alertSubject, options);
+   %catch someException
+    %fpri
+
+
+NAME: Weather Prediction from Threshold Values
+
+MATLAB Code:
+% Read temperature data from a ThingSpeak channel over the past 24 hours 
+% to calculate the high and low temperatures and write to another channel. 
+   
+% Channel 12397 contains data from the MathWorks Weather Station, located 
+% in Natick, Massachusetts. The data is collected once every minute. Field 
+% 4 contains temperature data. 
+   
+% Channel ID to read data from 
+readChannelID = 1369889; 
+% Temperature Field ID 
+TemperatureFieldID = 1; 
+PressureFieldID = 2;
+HumidityFieldID = 3;  
+% Channel Read API Key   
+% If your channel is private, then enter the read API Key between the '' below: 
+readAPIKey = 'TI15UDZ38496FELU'; 
+   
+% Read temperature data for the last 24 hours from the MathWorks weather 
+% station channel. Learn more about the thingSpeakRead function by going to 
+% the Documentation tab on the right side pane of this page. 
+   
+[tempF,timeStamp] = thingSpeakRead(readChannelID,'Fields',TemperatureFieldID, ...
+                                                'numDays',1,'ReadKey',readAPIKey); 
+[pressF,timeStamp] = thingSpeakRead(readChannelID,'Fields',PressureFieldID,'numDays',1,'ReadKey',readAPIKey);
+[humiF,timeStamp] = thingSpeakRead(readChannelID,'Fields',HumidityFieldID,'numDays',1,'ReadKey',readAPIKey);  
+% Calculate the maximum and minimum temperatures 
+[maxTempF,maxTempIndex] = max(tempF); 
+[minTempF,minTempIndex] = min(tempF); 
+avgPressure = nanmean(pressF);
+avgTemperature = nanmean(tempF);
+avgHumidity = nanmean(humiF);
+% Select the timestamps at which the maximum and minimum temperatures were measured
+timeMaxTemp = timeStamp(maxTempIndex); 
+timeMinTemp = timeStamp(minTempIndex); 
+   
+display(maxTempF,'Maximum Temperature for the past 24 hours is'); 
+display(minTempF,'Minimum Temperature for the past 24 hours is'); 
+display(avgPressure,'Average Pressure for the past 24 hours is');    
+display(avgTemperature,'Average Temperature for the past 24 hours is');  
+display(avgHumidity,'Average Humidity for the past 24 hours is');   
+
+
+writeChannelID = 1369893; 
+% Enter the Write API Key between the '' below: 
+writeAPIKey = 'YMAK01DU9P9V9AOD';   
+% Learn more about the thingSpeakWrite function by going to the Documentation tab on 
+% the right side pane of this page. 
+
+thingSpeakWrite(writeChannelID,'Fields',[3,4,2,1,5],'Values',{maxTempF,minTempF,avgPressure,avgTemperature,avgHumidity},'WriteKey',writeAPIKey);
+%thingSpeakWrite(writeChannelID,,'Fields',4,'WriteKey',writeAPIKey);
+%thingSpeakWrite(writeChannelID,,'Fields',2,'WriteKey',writeAPIKey);
+%thingSpeakWrite(writeChannelID,,'Fields',1,'WriteKey',writeAPIKey);
+alertApiKey = 'TAKP7C5XU9ZEVJ8GFZRXC';
+alertUrl = "https://api.thingspeak.com/alerts/send";
+options = weboptions("HeaderFields", ["ThingSpeak-Alerts-API-Key", alertApiKey ]);
+alertSubject = sprintf("Weather Forecast Notification");
+if((avgTemperature<26) & (avgHumidity>80) & (avgPressure<100600))
+    disp('It is expected to rain in 30 mins')
+    alertBody='Chennai Weather Prediction today: It is expected to rain in 30 mins';
+else
+    disp('The weather is clear today!')
+    alertBody='Chennai Weather Prediction today: The weather is clear today!';
+end
+%try  
+webwrite(alertUrl , "body", alertBody, "subject", alertSubject, options);
+   %catch someException
+    %fprintf("Failed to send alert: %s\n", someException.message);
+%end
+
+
+**Combined_WRS_PiCode.py**
+import sys
+from urllib.request import urlopen
+import RPi.GPIO as GPIO
+import bmpsensor
+from time import sleep
+import requests
+
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+channel=26
+GPIO.setup(channel,GPIO.IN)
+GPIO.setup(21,GPIO.OUT)   
+GPIO.setup(21,GPIO.OUT, initial=GPIO.LOW)
+pin1=23
+pin2=24
+GPIO.setup(pin1,GPIO.OUT, initial=GPIO.LOW)
+GPIO.setup(pin2,GPIO.OUT, initial=GPIO.LOW)
+myAPI='F6CJSTUTJ2S1WE9Q'
+baseURL = 'https://api.thingspeak.com/update?api_key=%s' %myAPI
+def bmp_data():
+    temp,press,alt= bmpsensor.readBmp180()
+    return temp,press,alt
+
+
+def main():
+    for x in range(5):
+        temp,press,alt=bmp_data()
+        print('WEATHER MONITORING SYSTEM - PROJECT 1')
+        print('-------------------------------------------------------')
+        print('-------------------------------------------------------')
+        print("Temperature: %.2f C" % temp)
+        print('------------------------------')
+        print("Pressure:    %.2f hPa" % (press / 100.0))
+        print('-------------------------------')
+        if GPIO.input(channel):
+            w=0;
+            conn = urlopen(baseURL + '&field1=%s&field2=%s&field4=%s' % (temp,press,w))
+            print('No Rain')
+            print('-------------------------------')
+            print(conn.read())
+            conn.close()
+            GPIO.output(21,0)
+            sleep(1)
+        else:
+            w=1;
+            conn = urlopen(baseURL + '&field1=%s&field2=%s&field4=%s' % (temp,press,w))
+            print('Raining!')
+            print('-------------------------------')
+            print(conn.read())
+            conn.close()
+            GPIO.output(21,1)
+            sleep(1)
+            GPIO.output(21,0)
+            sleep(1)
+            GPIO.output(21,1)
+        readapikey='VEGUER776SBMMPN8'
+        channel_id=1369893
+        baseURL1= 'https://api.thingspeak.com/channels/1369893/fields/1.json?api_key=VEGUER776SBMMPN8&results=1'
+        get_data= requests.get(baseURL1).json()
+        print('WEATHER MONITORING SYSTEM - ACTUATION:')
+        print('-------------------------------------------------------')
+        print('Average Temperature: '+get_data['feeds'][0]['field1'])
+        if float(get_data['feeds'][0]['field1'])>28:
+            print("It's a VERY hot day")
+            GPIO.output(pin1, 1)
+            GPIO.output(pin2, 0)
+        else:
+            print("It's a Normal day")
+            GPIO.output(pin2, 1)
+            GPIO.output(pin1, 0)
+        baseURL2= 'https://api.thingspeak.com/channels/1369893/fields/2.json?api_key=VEGUER776SBMMPN8&results=1'
+        get_data2= requests.get(baseURL2).json()
+        print('-------------------------------')
+        print('Average Pressure:'+get_data2['feeds'][0]['field2'])
+        if float(get_data2['feeds'][0]['field2'])<970:
+            print("It's a windy day")
+            GPIO.output(21, 1)
+        sleep(30)
+        print('-------------------------------------------------------')
+        print('-------------------------------------------------------')
+        GPIO.output(pin1, 0)
+        GPIO.output(pin2, 0)
+        GPIO.output(21,0)
+
+if __name__=="__main__":
+    main()
+
+**bmp180_package.py**
+
+#save this in home/pi for importing into your Python code
+# make sure to install python-smbus using below command
+# sudo apt-get install python-smbus
+import smbus
+import time
+from ctypes import c_short
+ 
+DEVICE = 0x77 # Default device I2C address
+ 
+#bus = smbus.SMBus(0)  # Rev 1 Pi uses 0
+bus = smbus.SMBus(1) # Rev 2 Pi uses 1 
+ 
+def convertToString(data):
+  # Simple function to convert binary data into
+  # a string
+  return str((data[1] + (256 * data[0])) / 1.2)
+
+def getShort(data, index):
+  # return two bytes from data as a signed 16-bit value
+  return c_short((data[index] << 8) + data[index + 1]).value
+
+def getUshort(data, index):
+  # return two bytes from data as an unsigned 16-bit value
+  return (data[index] << 8) + data[index + 1]
+
+def readBmp180Id(addr=DEVICE):
+  # Chip ID Register Address
+  REG_ID     = 0xD0
+  (chip_id, chip_version) = bus.read_i2c_block_data(addr, REG_ID, 2)
+  return (chip_id, chip_version)
+  
+def readBmp180(addr=0x77):
+  # Register Addresses
+  REG_CALIB  = 0xAA
+  REG_MEAS   = 0xF4
+  REG_MSB    = 0xF6
+  REG_LSB    = 0xF7
+  # Control Register Address
+  CRV_TEMP   = 0x2E
+  CRV_PRES   = 0x34 
+  # Oversample setting
+  OVERSAMPLE = 3    # 0 - 3
+  
+  # Read calibration data
+  # Read calibration data from EEPROM
+  cal = bus.read_i2c_block_data(addr, REG_CALIB, 22)
+
+  # Convert byte data to word values
+  AC1 = getShort(cal, 0)
+  AC2 = getShort(cal, 2)
+  AC3 = getShort(cal, 4)
+  AC4 = getUshort(cal, 6)
+  AC5 = getUshort(cal, 8)
+  AC6 = getUshort(cal, 10)
+  B1  = getShort(cal, 12)
+  B2  = getShort(cal, 14)
+  MB  = getShort(cal, 16)
+  MC  = getShort(cal, 18)
+  MD  = getShort(cal, 20)
+
+  # Read temperature
+  bus.write_byte_data(addr, REG_MEAS, CRV_TEMP)
+  time.sleep(0.005)
+  (msb, lsb) = bus.read_i2c_block_data(addr, REG_MSB, 2)
+  UT = (msb << 8) + lsb
+
+  # Read pressure
+  bus.write_byte_data(addr, REG_MEAS, CRV_PRES + (OVERSAMPLE << 6))
+  time.sleep(0.04)
+  (msb, lsb, xsb) = bus.read_i2c_block_data(addr, REG_MSB, 3)
+  UP = ((msb << 16) + (lsb << 8) + xsb) >> (8 - OVERSAMPLE)
+
+  # Refine temperature
+  X1 = ((UT - AC6) * AC5) >> 15
+  X2 = (MC << 11) / (X1 + MD)
+  B5 = X1 + X2
+  temperature = int(B5 + 8) >> 4
+  temperature = temperature / 10.0
+
+  # Refine pressure
+  B6  = B5 - 4000
+  B62 = int(B6 * B6) >> 12
+  X1  = (B2 * B62) >> 11
+  X2  = int(AC2 * B6) >> 11
+  X3  = X1 + X2
+  B3  = (((AC1 * 4 + X3) << OVERSAMPLE) + 2) >> 2
+
+  X1 = int(AC3 * B6) >> 13
+  X2 = (B1 * B62) >> 16
+  X3 = ((X1 + X2) + 2) >> 2
+  B4 = (AC4 * (X3 + 32768)) >> 15
+  B7 = (UP - B3) * (50000 >> OVERSAMPLE)
+
+  P = (B7 * 2) / B4
+
+  X1 = (int(P) >> 8) * (int(P) >> 8)
+  X1 = (X1 * 3038) >> 16
+  X2 = int(-7357 * P) >> 16
+  pressure = int(P + ((X1 + X2 + 3791) >> 4))
+  #pressure = float(pressure / 100.0)
+  
+  
+  altitude = 44330.0 * (1.0 - pow(pressure / 101325.0, (1.0/5.255)))
+  altitude = round(altitude,2)
+
+  return (temperature,pressure,altitude)
+
+
+
+**requirements**
+
+1. smbus
+2. BMP180 (link to the package in **Raspberry Pi Codes**)
+3. To enable I2C in Raspberry Pi, the following must be done: 
+    -->1 Click the Raspberry icon (Menu) on the top-left corner of the Pi page 
+    -->2 Go to Preferences->Raspberry Pi Configuration->Interface->I2C->Enable 
+4. To check connections of BMP180, Go To terminal-> **i2cdetect -y 1**
+
